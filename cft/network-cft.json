@@ -1,0 +1,1127 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09", 
+    "Description": "7 layer architecture CFT", 
+    "Parameters": {
+        "Myip": {
+            "Description": "Enter myip", 
+            "Type": "String"
+        }, 
+        "Mykeyname": {
+            "Description": "Name of an existing Amazon EC2 KeyPair for SSH access", 
+            "Type": "AWS::EC2::KeyPair::KeyName", 
+            "Default": "akhil_km_key"
+        }, 
+        "Natinstancetype": {
+            "Description": "Natinstance type", 
+            "Type": "String", 
+            "Default": "t2.micro", 
+            "AllowedValues": [
+                "t1.micro", 
+                "t2.micro", 
+                "m1.small", 
+                "m1.medium", 
+                "m1.large", 
+                "m1.xlarge", 
+                "m2.xlarge", 
+                "m2.2xlarge", 
+                "m2.4xlarge", 
+                "c1.medium", 
+                "c1.xlarge", 
+                "cc1.4xlarge", 
+                "cc2.8xlarge", 
+                "cg1.4xlarge"
+            ], 
+            "ConstraintDescription": "must be a valid instance type."
+        }, 
+        "MyAPPinstanceType": {
+            "Description": "webinstance type", 
+            "Type": "String", 
+            "Default": "t2.micro", 
+            "AllowedValues": [
+                "t1.micro", 
+                "t2.micro", 
+                "m1.small", 
+                "m1.medium", 
+                "m1.large", 
+                "m1.xlarge", 
+                "m2.xlarge", 
+                "m2.2xlarge", 
+                "m2.4xlarge", 
+                "c1.medium", 
+                "c1.xlarge", 
+                "cc1.4xlarge", 
+                "cc2.8xlarge", 
+                "cg1.4xlarge"
+            ], 
+            "ConstraintDescription": "must be a valid instance type."
+        }
+    }, 
+    "Mappings": {
+        "RegionMap": {
+            "us-east-1": {
+                "AMI": "ami-184dc970"
+            }, 
+            "us-west-2": {
+                "AMI": "ami-290f4119"
+            }, 
+            "eu-west-1": {
+                "AMI": "ami-37c2f643"
+            }, 
+            "ap-southeast-1": {
+                "AMI": "ami-66f28c34"
+            }, 
+            "ap-northeast-1": {
+                "AMI": "ami-9c03a89d"
+            }
+        }, 
+        "RegionMap1": {
+            "us-east-1": {
+                "AMI": "ami-2051294a"
+            }, 
+            "us-west-2": {
+                "AMI": "ami-775e4f16"
+            }, 
+            "eu-west-1": {
+                "AMI": "ami-37c2f643"
+            }, 
+            "ap-southeast-1": {
+                "AMI": "ami-66f28c34"
+            }, 
+            "ap-northeast-1": {
+                "AMI": "ami-9c03a89d"
+            }
+        }
+    }, 
+    "Resources": {
+		"akhilvpc": {
+            "Type": "AWS::EC2::VPC", 
+            "Properties": {
+                "CidrBlock": "10.0.0.0/16", 
+                "EnableDnsSupport": "TRUE", 
+                "EnableDnsHostnames": "TRUE", 
+                "InstanceTenancy": "default", 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhilvpc"
+                    }
+                ]
+            }
+        }, 
+		"akhiligw": {
+            "Type": "AWS::EC2::InternetGateway", 
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-igw"
+                    }
+                ]
+            }
+        }, 
+		"IGWAttach": {
+            "Type": "AWS::EC2::VPCGatewayAttachment", 
+            "Properties": {
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "InternetGatewayId": {
+                    "Ref": "akhiligw"
+                }
+            }
+        }, 
+		"ElbSubnet1": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.4.32/28", 
+                "AvailabilityZone": "us-west-2a", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-elb1"
+                    }
+                ]
+            }
+        }, 
+		"ElbSubnet2": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.4.48/28", 
+                "AvailabilityZone": "us-west-2b", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-elb2"
+                    }
+                ]
+            }
+        }, 
+		 "Natpublicsub1": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.4.0/28", 
+                "AvailabilityZone": "us-west-2a", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-nat1"
+                    }
+                ]
+            }
+        }, 
+        "Natpublicsub2": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.4.16/28", 
+                "AvailabilityZone": "us-west-2b", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-nat2"
+                    }
+                ]
+            }
+        }, 
+        "Websub1": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.0.0/24", 
+                "AvailabilityZone": "us-west-2a", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-pub1"
+                    }
+                ]
+            }
+        }, 
+        "Websub2": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.1.0/24", 
+                "AvailabilityZone": "us-west-2b", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-pub2"
+                    }
+                ]
+            }
+        }, 
+		"iElbSubnet1": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.4.64/28", 
+                "AvailabilityZone": "us-west-2a", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-ielb1"
+                    }
+                ]
+            }
+        }, 
+		"iElbSubnet2": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.4.80/28", 
+                "AvailabilityZone": "us-west-2b", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-elb2"
+                    }
+                ]
+            }
+        }, 
+		"AppSubnet1": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.4.96/28", 
+                "AvailabilityZone": "us-west-2a", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-App1"
+                    }
+                ]
+            }
+        }, 
+		"AppSubnet2": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.4.112/28", 
+                "AvailabilityZone": "us-west-2b", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-App2"
+                    }
+                ]
+            }
+        }, 
+        "Serversub1": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.2.0/24", 
+                "AvailabilityZone": "us-west-2a", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-pri2"
+                    }
+                ]
+            }
+        }, 
+        "Serversub2": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.3.0/24", 
+                "AvailabilityZone": "us-west-2b", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-pri2"
+                    }
+                ]
+            }
+        }, 
+		"AdminSubnet1": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.4.128/28", 
+                "AvailabilityZone": "us-west-2a", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-Admin1"
+                    }
+                ]
+            }
+        }, 
+		"AdminSubnet2": {
+            "Type": "AWS::EC2::Subnet", 
+            "Properties": {
+                "CidrBlock": "10.0.4.144/28", 
+                "AvailabilityZone": "us-west-2b", 
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil-Admin2"
+                    }
+                ]
+            }
+        }, 
+        "Privateroutetable1": {
+            "Type": "AWS::EC2::RouteTable", 
+            "Properties": {
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil.kurumath-pri1-rt"
+                    }
+                ]
+            }
+        }, 
+        "Privateroutetable2": {
+            "Type": "AWS::EC2::RouteTable", 
+            "Properties": {
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil.kurumath-pri2-rt"
+                    }
+                ]
+            }
+        }, 
+        "Publicroutetable": {
+            "Type": "AWS::EC2::RouteTable", 
+            "Properties": {
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil.kurumath-pub-rt"
+                    }
+                ]
+            }
+        }, 
+        "route1": {
+            "Type": "AWS::EC2::Route", 
+            "DependsOn": "akhiligw", 
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "Publicroutetable"
+                }, 
+                "DestinationCidrBlock": "0.0.0.0/0", 
+                "GatewayId": {
+                    "Ref": "akhiligw"
+                }
+            }
+        }, 
+        "route2": {
+            "Type": "AWS::EC2::Route", 
+            "DependsOn": "Mynatinstance1", 
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "Privateroutetable1"
+                }, 
+                "DestinationCidrBlock": "0.0.0.0/0", 
+                "InstanceId": {
+                    "Ref": "Mynatinstance1"
+                }
+            }
+        }, 
+        "route3": {
+            "Type": "AWS::EC2::Route", 
+            "DependsOn": "Mynatinstance2", 
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "Privateroutetable2"
+                }, 
+                "DestinationCidrBlock": "0.0.0.0/0", 
+                "InstanceId": {
+                    "Ref": "Mynatinstance2"
+                }
+            }
+        }, 
+       "publicrtassociation1": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "Natpublicsub1"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Publicroutetable"
+                }
+            }
+        }, 
+        "publicrtassociation2": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "Natpublicsub2"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Publicroutetable"
+                }
+            }
+        }, 
+		"publicrtassociation3": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "ElbSubnet1"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Publicroutetable"
+                }
+            }
+        }, 
+        "publicrtassociation4": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "ElbSubnet2"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Publicroutetable"
+                }
+            }
+        },
+		"privatertassociation1": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "Websub1"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Privateroutetable1"
+                }
+            }
+        }, 
+        "privatertassociation2": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "Websub2"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Privateroutetable2"
+                }
+            }
+        }, 
+		"privatertassociation3": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "iElbSubnet1"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Privateroutetable1"
+                }
+            }
+        }, 
+        "privatertassociation4": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "iElbSubnet2"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Privateroutetable2"
+                }
+            }
+        }, 
+		"privatertassociation5": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "AppSubnet1"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Privateroutetable1"
+                }
+            }
+        }, 
+        "privatertassociation6": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "AppSubnet2"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Privateroutetable2"
+                }
+            }
+        }, 
+		"privatertassociation7": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "Serversub1"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Privateroutetable1"
+                }
+            }
+        }, 
+        "privatertassociation8": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "Serversub2"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Privateroutetable2"
+                }
+            }
+        }, 
+		"privatertassociation9": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "AdminSubnet1"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Privateroutetable1"
+                }
+            }
+        }, 
+        "privatertassociation10": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation", 
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "AdminSubnet2"
+                }, 
+                "RouteTableId": {
+                    "Ref": "Privateroutetable2"
+                }
+            }
+        }, 
+		"natsg": {
+            "Type": "AWS::EC2::SecurityGroup", 
+            "Properties": {
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "GroupDescription": "natsecuritygroup"
+            }
+        }, 
+        "websg": {
+            "Type": "AWS::EC2::SecurityGroup", 
+            "Properties": {
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "GroupDescription": "publicsecuritygroup"
+            }
+        }, 
+        "privatesg": {
+            "Type": "AWS::EC2::SecurityGroup", 
+            "Properties": {
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "GroupDescription": "privatesecuritygroup"
+            }
+        }, 
+        "loadbalancersg": {
+            "Type": "AWS::EC2::SecurityGroup", 
+            "Properties": {
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "GroupDescription": "loadbalancersecuritygroup"
+            }
+        }, 
+        "databasesg": {
+            "Type": "AWS::EC2::SecurityGroup", 
+            "Properties": {
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "GroupDescription": "databasesecuritygroup"
+            }
+        }, 
+		"splunkserversg": {
+            "Type": "AWS::EC2::SecurityGroup", 
+            "Properties": {
+                "VpcId": {
+                    "Ref": "akhilvpc"
+                }, 
+                "GroupDescription": "splunkserversecuritygroup"
+            }
+        }, 
+		 "loadbalancersgEgress1": {
+            "Type": "AWS::EC2::SecurityGroupEgress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "80", 
+                "ToPort": "80", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "loadbalancersg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+        "loadbalancersgEgress2": {
+            "Type": "AWS::EC2::SecurityGroupEgress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "443", 
+                "ToPort": "443", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "loadbalancersg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+		 "loadbalancersgInbound1": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "80", 
+                "ToPort": "80", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "loadbalancersg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": {
+                    "Ref": "Myip"
+                }
+            }
+        }, 
+        "loadbalancersgInbound2": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "443", 
+                "ToPort": "443", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "loadbalancersg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": {
+                    "Ref": "Myip"
+                }
+            }
+        }, 
+		"natsgInbound1": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "22", 
+                "ToPort": "22", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "natsg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": {
+                    "Ref": "Myip"
+                }
+            }
+        }, 
+        "natsgInbound2": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "443", 
+                "ToPort": "443", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "natsg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+        "natsgInbound3": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "80", 
+                "ToPort": "80", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "natsg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+        "websgInbound1": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "443", 
+                "ToPort": "443", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "websg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+        "websgInbound2": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "80", 
+                "ToPort": "80", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "websg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+        "websgInbound3": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "22", 
+                "ToPort": "22", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "websg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+        "privatesgInbound1": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "443", 
+                "ToPort": "443", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "privatesg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+        "privatesgInbound2": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "80", 
+                "ToPort": "80", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "privatesg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+        "privatesgInbound3": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "22", 
+                "ToPort": "22", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "privatesg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+		"databasesgInbound": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "3306", 
+                "ToPort": "3306", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "databasesg", 
+                        "GroupId"
+                    ]
+                }, 
+                "SourceSecurityGroupId": {
+                    "Fn::GetAtt": [
+                        "websg", 
+                        "GroupId"
+                    ]
+                }
+            }
+        }, 
+		"splunkserversgInbound1": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "22", 
+                "ToPort": "22", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "splunkserversg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": {
+                    "Ref": "Myip"
+                }
+            }
+        }, 
+		"splunkserversgInbound2": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "8000", 
+                "ToPort": "8000", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "splunkserversg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": {
+                    "Ref": "Myip"
+                }
+            }
+        }, 
+		"splunkserversgInbound3": {
+            "Type": "AWS::EC2::SecurityGroupIngress", 
+            "Properties": {
+                "IpProtocol": "tcp", 
+                "FromPort": "9997", 
+                "ToPort": "9997", 
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "splunkserversg", 
+                        "GroupId"
+                    ]
+                }, 
+                "CidrIp": "10.0.0.0/16"
+            }
+        }, 
+		"Mynatinstance1": {
+            "Type": "AWS::EC2::Instance", 
+            "Properties": {
+                "SourceDestCheck": "false", 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil.kurumath_natinstance1"
+                    }
+                ], 
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap", 
+                        {
+                            "Ref": "AWS::Region"
+                        }, 
+                        "AMI"
+                    ]
+                }, 
+                "KeyName": {
+                    "Ref": "Mykeyname"
+                }, 
+                "InstanceType": {
+                    "Ref": "Natinstancetype"
+                }, 
+                "NetworkInterfaces": [
+                    {
+                        "AssociatePublicIpAddress": "true", 
+                        "DeviceIndex": "0", 
+                        "GroupSet": [
+                            {
+                                "Ref": "natsg"
+                            }
+                        ], 
+                        "SubnetId": {
+                            "Ref": "Natpublicsub1"
+                        }
+                    }
+                ]
+            }
+        }, 
+        "Mynatinstance2": {
+            "Type": "AWS::EC2::Instance", 
+            "Properties": {
+                "SourceDestCheck": "false", 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil.kurumath_natinstance2"
+                    }
+                ], 
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap", 
+                        {
+                            "Ref": "AWS::Region"
+                        }, 
+                        "AMI"
+                    ]
+                }, 
+                "KeyName": {
+                    "Ref": "Mykeyname"
+                }, 
+                "InstanceType": {
+                    "Ref": "Natinstancetype"
+                }, 
+                "NetworkInterfaces": [
+                    {
+                        "AssociatePublicIpAddress": "true", 
+                        "DeviceIndex": "0", 
+                        "GroupSet": [
+                            {
+                                "Ref": "natsg"
+                            }
+                        ], 
+                        "SubnetId": {
+                            "Ref": "Natpublicsub2"
+                        }
+                    }
+                ]
+            }
+        },
+		"MyAppinstance1": {
+            "Type": "AWS::EC2::Instance", 
+			"DependsOn" : "MySplunkserver",
+            "Properties": {
+				"UserData" : {
+					"Fn::Base64" : {
+						"Fn::Join" : ["", [
+								"#!/bin/bash \n",
+								"yum install httpd -y\n",
+								"service httpd start\n",
+								"service httpd enable\n",
+								"yum -y install wget\n",
+								"wget -O /tmp/splunkforwarder-6.2.1-245427-linux-2.6-x86_64.rpm 'https://www.splunk.com/bin/splunk/DownloadActivityServlet?architecture=x86_64&platform=Linux&version=6.2.1&product=universalforwarder&filename=splunkforwarder-6.2.1-245427-linux-2.6-x86_64.rpm&wget=true'\n",
+							    "rpm -ivh /tmp/splunkforwarder-6.2.1-245427-linux-2.6-x86_64.rpm\n",
+								"/opt/splunkforwarder/bin/splunk start --accept-license --answer-yes\n",
+								"/opt/splunkforwarder/bin/splunk login -auth admin:changeme\n",
+								"/opt/splunkforwarder/bin/splunk edit user admin --password admin123\n",
+								"/opt/splunkforwarder/bin/splunk enable boot-start\n",
+								"/opt/splunkforwarder/bin/splunk add forward-server 10.0.4.40:9997 -auth admin:changeme\n",
+								"/opt/splunkforwarder/bin/splunk add monitor /var/log/httpd/\n",
+								"/opt/splunkforwarder/bin/splunk add monitor /var/log/messages\n"								
+							]]
+					}
+				},
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap1", 
+                        {
+                            "Ref": "AWS::Region"
+                        }, 
+                        "AMI"
+                    ]
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil.kurumath_Appinstance1"
+                    }
+                ], 
+                "NetworkInterfaces": [
+                    {
+                        "GroupSet": [
+                            {
+                                "Ref": "privatesg"
+                            }
+                        ], 
+                        "AssociatePublicIpAddress": "false", 
+                        "DeviceIndex": "0", 
+                        "SubnetId": {
+                            "Ref": "AppSubnet1"
+                        }, 
+                        "Description": "eth0"
+                    }
+                ], 
+                "InstanceType": {
+                    "Ref": "MyAPPinstanceType"
+                }, 
+                "KeyName": {
+                    "Ref": "Mykeyname"
+                }
+            }
+        },
+		"MySplunkserver": {
+            "Type": "AWS::EC2::Instance", 
+            "Properties": {
+				"UserData" : {
+					"Fn::Base64" : {
+						"Fn::Join" : ["", [
+								"#!/bin/bash \n",
+								"yum -y install wget\n",
+								"wget -O splunk-6.4.1-debde650d26e-linux-2.6-x86_64.rpm 'https://www.splunk.com/bin/splunk/DownloadActivityServlet?architecture=x86_64&platform=linux&version=6.4.1&product=splunk&filename=splunk-6.4.1-debde650d26e-linux-2.6-x86_64.rpm&wget=true'\n",
+								"yum install -y splunk-6.4.1-debde650d26e-linux-2.6-x86_64.rpm\n",
+								"/opt/splunk/bin/splunk start --accept-license --answer-yes\n",
+								"/opt/splunk/bin/splunk enable listen 9997\n",
+								"/opt/splunk/bin/splunk enable boot-start\n"
+							]]
+					}
+				},
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap1", 
+                        {
+                            "Ref": "AWS::Region"
+                        }, 
+                        "AMI"
+                    ]
+                }, 
+                "Tags": [
+                    {
+                        "Key": "Name", 
+                        "Value": "akhil.kurumath_splunkserver"
+                    }
+                ], 
+                "NetworkInterfaces": [
+                    {
+                        "GroupSet": [
+                            {
+                                "Ref": "splunkserversg"
+                            }
+                        ], 						
+                        "AssociatePublicIpAddress": "true", 
+                        "DeviceIndex": "0", 
+                        "SubnetId": {
+                            "Ref": "ElbSubnet1"
+                        }, 
+						"PrivateIpAddress" : "10.0.4.40",
+                        "Description": "eth0"
+                    }
+                ], 
+                "InstanceType": {
+                    "Ref": "MyAPPinstanceType"
+                }, 
+                "KeyName": {
+                    "Ref": "Mykeyname"
+                }
+            }
+        }
+    },
+	"Outputs": {
+        "SplunkServerpublicip": {
+            "Description": "Splunk server public ip", 
+            "Value": {
+                "Fn::GetAtt": [
+                    "MySplunkserver", 
+                    "PublicIp"
+                ]
+            }
+        }
+    }
+}
