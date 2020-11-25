@@ -3,6 +3,8 @@ Terraform commands
 terraform init => initializes the present directory
 terrafrom plan => dry run
 terraform apply => Create the infra
+terrafomr destroy => Destroy the infra
+terrafomr get => get the remote modules
 ```
 
 AWS IAM Roles required

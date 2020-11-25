@@ -11,6 +11,14 @@ variable VPC_CIDR {
     type = string
 }
 
+variable ENABLE_VPC_DNS_HOSTNAME {
+  default     = true
+}
+
+variable ENABLE_VPC_DNS_SUPPORT {
+  default     = true
+}
+
 variable AWS_ZONES {
     type = list(string)
     default = ["a", "b", "c"]

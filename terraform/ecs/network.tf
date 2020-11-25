@@ -1,6 +1,8 @@
 # Main VPC
 resource "aws_vpc" "akhil-vpc" {
     cidr_block = join("", [var.VPC_CIDR, "0.0/16"])
+    enable_dns_hostnames = var.ENABLE_VPC_DNS_HOSTNAME
+    enable_dns_support   = var.ENABLE_VPC_DNS_SUPPORT
     tags = {
         Name = join("", ["akhil-", var.ENVIRONMENT, "-vpc"])
     }
